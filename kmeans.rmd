@@ -1,0 +1,50 @@
+```{r, eval=FALSE}
+any( TRUE == is.na( mat.raw ) )
+```
+
+R 提供了 colMeans 却没有 colSd,
+我们自己定义它, 尽管是很慢的方案.
+```{r}
+colSd <- function(x) apply(X=x, MARGIN=2, FUN=sd)
+```
+
+废话到此为止,
+现在开始读入所有文件.
+
+需要注意的是,
+R 按列展平.
+```{r}
+N <- 20
+mat.com <- NULL
+for ( i in 0:(N-1) ) {
+  fp <- paste( formatC(i, width=4, flag='0'), 'csv', sep='.' )
+  mat.raw <- read.csv( file.path('tmp',fp), header=FALSE )
+  mat.nor <- (mat.raw - colMeans(mat.raw)) / colSd(mat.raw)
+  vec.tmp <- unlist( mat.nor, use.names=FALSE )
+  mat.com <- cbind( mat.com, vec.tmp )
+}
+```
+
+附上头信息,查看信息
+```{r}
+colnames(mat.com) <- 1:N
+c( nrow(mat.com), ncol(mat.com) )
+```
+
+使用库来自适应计算聚类中心数量。
+```{r, message=FALSE}
+any( is.na(mat.com) )
+library(fpc)
+cls.pamk <- pamk( mat.com )
+(nc <- cls.pamk$nc)
+```
+
+我们的矩阵是竖着来的。
+但对于 kmeans 它需要每一行是两个点之类的。
+所以需要转置。
+```{r}
+## random starts do help here with too many clusters
+## (and are often recommended anyway!):
+cls.kmeans <- kmeans( t(mat.com), nc, nstart = 25 )
+cls.kmeans$cluster
+```
